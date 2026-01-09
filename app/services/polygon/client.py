@@ -86,25 +86,7 @@ class MassiveClient:
                 status_code=getattr(e, 'status', 500),
                 detail=error_msg
             )
-    
-    async def get_tickers(self, limit: int = 100) -> Dict[str, Any]:
-        """Obtiene una lista de tickers disponibles"""
-        return await self._make_request(
-            "GET",
-            "/v3/reference/tickers",
-            params={
-                "active": "true",
-                "limit": 1
-            }
-        )
-    
-    async def get_previous_day(self, ticker: str, adjusted: bool = True) -> Dict[str, Any]:
-        """Obtiene los datos del día anterior para un ticker específico"""
-        return await self._make_request(
-            "GET",
-            f"/v2/aggs/ticker/{ticker.upper()}/prev",
-            params={"adjusted": str(adjusted).lower()}
-        )
+    @lru_cache(maxsize=128)
     async def get_ticker_details(self, symbol: str) -> Dict[str, Any]:
         """Obtiene los detalles de un ticker específico con datos del día actual
         
@@ -171,6 +153,7 @@ class MassiveClient:
                 status_code=500,
                 detail=f"Error al obtener detalles del ticker {symbol}: {str(e)}"
             )
+    @lru_cache(maxsize=32)
     async def get_daily_market_summary(self, date: str = None) -> Dict[str, Any]:
         """
         Obtiene el resumen diario del mercado para todas las acciones.
@@ -189,3 +172,7 @@ class MassiveClient:
             f"/v2/aggs/grouped/locale/us/market/stocks/{date}",
             params={"adjusted": "true"}
         )
+    def clear_cache(self):
+        """Clear all cached data"""
+        self.get_daily_market_summary.cache_clear()
+        self.get_ticker_details.cache_clear()
