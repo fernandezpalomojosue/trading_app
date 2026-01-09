@@ -172,52 +172,67 @@ async def get_asset(symbol: str):
     Obtiene los detalles de un activo específico por su símbolo.
     
     Args:
-        symbol: Símbolo del activo (ej: AAPL, BTC-USD)
+        symbol: Símbolo del activo (ej: AAPL, MSFT)
         
     Returns:
-        Asset: Detalles del activo solicitado
+        Asset: Detalles completos del activo
     """
     async with MassiveClient() as client:
         try:
-            ticker = await client.get_ticker_details(symbol)
-            if not ticker:
-                raise HTTPException(
-                    status_code=404, 
-                    detail=f"No se encontró el activo con símbolo {symbol}"
-                )
-            
-            # Get market type from ticker details, default to STOCKS if not found
-            market = ticker.get("market", "stocks").lower()
-            market_enum = MarketType(market) if market in [m.value for m in MarketType] else MarketType.STOCKS
-            
-            # Extract basic fields
-            ticker_symbol = ticker.get("ticker") or symbol.upper()
-            
-            # Create a clean details dict without duplicating fields
-            details = {
-                "description": ticker.get("description"),
-                "homepage_url": ticker.get("homepage_url"),
-                "market_cap": ticker.get("market_cap"),
-                "shares_outstanding": ticker.get("share_class_shares_outstanding"),
-                "primary_exchange": ticker.get("primary_exchange"),
-                "market_data": ticker.get("market_data", {})
-            }
-            
-            # Remove None values from details
-            details = {k: v for k, v in details.items() if v is not None}
+            data = await client.get_ticker_details(symbol)
             
             return Asset(
-                id=ticker_symbol.lower(),
-                symbol=ticker_symbol,
-                name=ticker.get("name", ticker_symbol),
-                market=market_enum,
-                currency=ticker.get("currency", "USD"),
-                active=ticker.get("active", True),
-                details=details
+                id=data["id"],
+                symbol=data["symbol"],
+                name=data["name"],
+                market=data["market"],
+                currency=data["currency"],
+                active=data["active"],
+                details=data
             )
-            
+        except HTTPException as e:
+            raise e
         except Exception as e:
             raise HTTPException(
-                status_code=500, 
-                detail=f"Error al obtener el activo: {str(e)}"
+                status_code=500,
+                detail=f"Error al obtener el activo {symbol}: {str(e)}"
+            )
+
+@router.get("/{symbol}/candles")
+async def get_candles(
+    symbol: str,
+    multiplier: int = 1,
+    timespan: str = "day",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    adjusted: bool = True,
+    sort: str = "asc",
+    limit: int = 5000
+):
+    """
+    Obtiene datos de velas (OHLC) para un símbolo específico.
+    
+    Ejemplo de uso:
+    - /markets/AAPL/candles?timespan=day&multiplier=1&start_date=2023-01-01&end_date=2023-01-31
+    - /markets/MSFT/candles?timespan=hour&multiplier=4&limit=100
+    """
+    async with MassiveClient() as client:
+        try:
+            data = await client.get_ohlc_data(
+                symbol=symbol,
+                multiplier=multiplier,
+                timespan=timespan,
+                start_date=start_date,
+                end_date=end_date,
+                adjusted=adjusted,
+                sort=sort,
+                limit=limit
+            )
+            return data
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al procesar la solicitud: {str(e)}"
             )

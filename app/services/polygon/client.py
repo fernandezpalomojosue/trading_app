@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Optional, Tuple, Union
 import aiohttp
 import os
 from fastapi import HTTPException
+from functools import lru_cache
 
 class RateLimiter:
     """Clase para manejar el rate limiting"""
@@ -172,6 +173,51 @@ class MassiveClient:
             f"/v2/aggs/grouped/locale/us/market/stocks/{date}",
             params={"adjusted": "true"}
         )
+    async def get_ohlc_data(
+        self,
+        symbol: str,
+        multiplier: int = 1,
+        timespan: str = "day",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        adjusted: bool = True,
+        sort: str = "asc",
+        limit: int = 5000
+    ) -> Dict[str, Any]:
+        """
+        Obtiene datos OHLC (velas) para un símbolo específico.
+        
+        Args:
+            symbol: Símbolo del activo (ej: AAPL)
+            multiplier: Tamaño del multiplicador de la ventana de tiempo
+            timespan: Ventana de tiempo (minute, hour, day, week, month, quarter, year)
+            start_date: Fecha de inicio (YYYY-MM-DD o timestamp en ms)
+            end_date: Fecha de fin (YYYY-MM-DD o timestamp en ms)
+            adjusted: Si ajustar por splits de acciones
+            sort: Orden de los resultados (asc o desc)
+            limit: Número máximo de resultados (hasta 50000)
+        """
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+            
+        endpoint = f"/v2/aggs/ticker/{symbol.upper()}/range/{multiplier}/{timespan}/{start_date}/{end_date}"
+        
+        params = {
+            "adjusted": str(adjusted).lower(),
+            "sort": sort,
+            "limit": min(limit, 50000)
+        }
+        
+        try:
+            return await self._make_request("GET", endpoint, params=params)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al obtener datos OHLC para {symbol}: {str(e)}"
+            )
+
     def clear_cache(self):
         """Clear all cached data"""
         self.get_daily_market_summary.cache_clear()
