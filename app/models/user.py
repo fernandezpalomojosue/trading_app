@@ -1,7 +1,7 @@
 # app/models/user.py
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship, Column
 from sqlalchemy import String
@@ -47,9 +47,11 @@ class UserBase(SQLModel):
     
     @validator('email')
     def validate_email(cls, v):
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
-            raise ValueError("Invalid email format")
-        return v
+        # Regex más robusta basada en RFC 5322 simplificada
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError("Formato de email inválido")
+        return v.lower()  # Normalizar a minúsculas
     @validator('username')
     def username_must_be_alphanumeric(cls, v):
         if v is not None and not v.isalnum():
@@ -69,11 +71,11 @@ class User(UserBase, table=True):
         description="Contraseña hasheada"
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Fecha de creación del usuario"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Última actualización del usuario"
     )
     
@@ -104,8 +106,8 @@ class UserCreate(UserBase):
         return User(
             **user_data,
             hashed_password=hashed_password,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             id=uuid.uuid4()  # UUID nativo
         )
 

@@ -7,14 +7,17 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Trading App"
     DEBUG: bool = True
     
+    # Database
+    ECHO_SQL: bool = False  # Controla si se muestran las consultas SQL
+    
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     RELOAD: bool = True
     
-    # Database
+    # Database Connection
     POSTGRES_USER: str = "leo"
-    POSTGRES_PASSWORD: str = ""
+    POSTGRES_PASSWORD: str = "trading_app_2024"
     POSTGRES_DB: str = "postgres"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: str = "5432"
@@ -26,7 +29,7 @@ class Settings(BaseSettings):
     TEST_DATABASE_URL: str = "postgresql://postgres:postgres@localhost/test_trading_app"
     
     # Security
-    SECRET_KEY: str = "your-secret-key-here"  # Cambia esto en producción
+    SECRET_KEY: str = "YMzgyRDTjPDStyUSH8QCRQJiSYFsa4D5UW3MlM79Bec"  # Cambia esto en producción
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 1 día
     
